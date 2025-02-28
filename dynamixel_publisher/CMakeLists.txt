@@ -53,8 +53,12 @@ include_directories(
 # Mark executable scripts (Python etc.) for installation
 # in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/current_pos_publisher.py
+  src/current_pos_ctrlmode.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(PROGRAMS
+  src/current_ctrlmode.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
