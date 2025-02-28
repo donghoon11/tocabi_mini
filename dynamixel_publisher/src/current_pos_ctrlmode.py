@@ -46,7 +46,7 @@ class DynamixelCurrentBasedPositionPublisher:
         self.dxl_ids = (
             dxl_ids
             if dxl_ids
-            else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+            else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
         )
 
         self.port_handler = dxl.PortHandler(self.device_name)
@@ -60,7 +60,7 @@ class DynamixelCurrentBasedPositionPublisher:
         if not self.port_handler.setBaudRate(self.baudrate):
             rospy.logerr("Cannot set the baudrate")
 
-        self.initialized = False
+        self.initialized = True  # False : initializing ready pose
         self.initial_positions = {
             1: 2048,
             2: 2048,
