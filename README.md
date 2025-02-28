@@ -20,20 +20,22 @@ data:
 ```
 * order
 
-
+'''
     L_Shoulder1, L_Shoulder2, L_Shoulder3, L_Arm, L_Elbow, L_Forearm, L_Wrist1, L_Wrist2,
 
     R_Shoulder1, R_Shoulder2, R_Shoulder3, R_Arm, R_Elbow, R_Forearm, R_Wrist1, R_Wrist2,
 
     L_Gripper, R_Gripper
 ```
+
 <br/></br>
 
 ### Pulse to Radian
 
-ode reads the current position of Dynamixel motors, converts it to radians, and resets the reference point to 0 radians after each full rotation (360°).
+Code reads the current position of Dynamixel motors, converts it to radians, and resets the reference point to 0 radians after each full rotation (360°).
 
 ✔ Converts encoder values (0–4095) to radians using:
+
 ```
 position_radian=(raw_data%4096)×PULSE_TO_RADIAN
 
