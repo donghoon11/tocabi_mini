@@ -20,15 +20,12 @@ data:
 ```
 * order
 
-'''
     L_Shoulder1, L_Shoulder2, L_Shoulder3, L_Arm, L_Elbow, L_Forearm, L_Wrist1, L_Wrist2,
 
     R_Shoulder1, R_Shoulder2, R_Shoulder3, R_Arm, R_Elbow, R_Forearm, R_Wrist1, R_Wrist2,
 
     L_Gripper, R_Gripper
-```
 
-<br/></br>
 
 ### Pulse to Radian
 
