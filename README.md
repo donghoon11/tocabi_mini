@@ -26,3 +26,22 @@ data:
     R_Shoulder1, R_Shoulder2, R_Shoulder3, R_Arm, R_Elbow, R_Forearm, R_Wrist1, R_Wrist2,
 
     L_Gripper, R_Gripper
+```
+<br/></br>
+
+### Pulse to Radian
+
+ode reads the current position of Dynamixel motors, converts it to radians, and resets the reference point to 0 radians after each full rotation (360°).
+
+✔ Converts encoder values (0–4095) to radians using:
+```
+position_radian=(raw_data%4096)×PULSE_TO_RADIAN
+
+position_radian=(raw_data%4096)×PULSE_TO_RADIAN
+```
+
+✔ Sets the first detected position as the reference (offset) for each motor.
+
+✔ Calculates relative position by subtracting the offset.
+
+✔ Keeps values within −π to +π (-3.14, 3.14) to ensure continuous motion tracking.
