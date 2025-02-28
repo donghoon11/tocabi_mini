@@ -52,15 +52,13 @@ class DynamixelCurrentBasedPositionPublisher:
         self.port_handler = dxl.PortHandler(self.device_name)
         self.packet_handler = dxl.PacketHandler(self.PROTOCOL_VERSION)
 
+        self.PULSE_TO_RADIAN = (2 * math.pi) / self.DXL_RESOLUTION
+        self.offsets = {dxl_id: None for dxl_id in self.dxl_ids}
+
         if not self.port_handler.openPort():
             rospy.logerr("Cannot open the port")
         if not self.port_handler.setBaudRate(self.baudrate):
             rospy.logerr("Cannot set the baudrate")
-
-        # if self.port_handler.setBaudRate(9600):
-        #     print("Succeeded to change the baudrate!\n")
-        # else:
-        #     print("ff")
 
         self.initialized = False
         self.initial_positions = {
@@ -84,10 +82,7 @@ class DynamixelCurrentBasedPositionPublisher:
 
         for dxl_id in self.dxl_ids:
             self.set_operating_mode(dxl_id, 5)
-            # self.set_pwm_limit(dxl_id, 442)
             self.set_current_limit(dxl_id, 1000)
-            # self.set_velocity_limit(dxl_id, 1023)
-            # self.set_acceleration_profile(dxl_id, 100)
             self.enable_torque(dxl_id, True)
 
         self.group_sync_read_position = dxl.GroupSyncRead(
@@ -123,65 +118,40 @@ class DynamixelCurrentBasedPositionPublisher:
         )
         rospy.loginfo(f"Torque {'enabled' if enable else 'disabled'} for ID {dxl_id}")
 
-    # def set_pwm_limit(self, dxl_id, pwm_limit):
-    #     self.packet_handler.write2ByteTxRx(self.port_handler, dxl_id, self.ADDR_PWM_LIMIT, pwm_limit)
-
     def set_current_limit(self, dxl_id, current_limit):
         self.packet_handler.write2ByteTxRx(
             self.port_handler, dxl_id, self.ADDR_CURRENT_LIMIT, current_limit
         )
-
-    # def set_velocity_limit(self, dxl_id, velocity_limit):
-    #     self.packet_handler.write4ByteTxRx(self.port_handler, dxl_id, self.ADDR_VELOCITY_LIMIT, velocity_limit)
-
-    # def set_acceleration_profile(self, dxl_id, acceleration):
-    #     self.packet_handler.write4ByteTxRx(self.port_handler, dxl_id, self.ADDR_PROFILE_ACCELERATION, acceleration)
 
     def set_goal_position(self, dxl_id, position):
         position = int(position)
         self.packet_handler.write4ByteTxRx(
             self.port_handler, dxl_id, self.ADDR_GOAL_POSITION, position
         )
-        # rospy.loginfo(f"Set goal position {position} for ID {dxl_id}")
 
     def read_position_radian(self):
         positions = {}
 
         for dxl_id in self.dxl_ids:
-            data = self.group_sync_read_position.getData(
+            raw_data = self.group_sync_read_position.getData(
                 dxl_id, self.ADDR_PRESENT_POSITION, 4
             )
-            # print(data)
-            if data is not None:
-                # pulse to degree (1 pulse = 0.088 deg)
-                degree = data * (360.0 / self.DXL_RESOLUTION)
+            if raw_data is None:
+                continue
 
-                # set the 180 degree as 0 radian, (0~180 deg: negative), (180~360: positive)
-                # if degree < 180.0:
-                #     radian = - (180.0 - degree) * self.DEGREE_TO_RADIAN
-                # elif degree > 180.0:
-                #     radian = (degree - 180.0) * self.DEGREE_TO_RADIAN
-                # else:
-                #     radian = 0.0
-                # if dxl_id == 3:
-                #     radian = - (radian - 1.5)
-                # if dxl_id == 4:
-                #     radian = radian + 1.3
-                # if dxl_id == 11:
-                #     radian = -(radian + 1.25) - 0.5
-                # if dxl_id == 12:
-                #     radian = radian + 1.25
-                # if dxl_id == 13:
-                #     radian = - radian
-                if degree < 180.0:
-                    radian = -(180.0 - degree) * self.DEGREE_TO_RAIDAN
-                elif degree > 180.0:
-                    radian = (degree - 180.0) * self.DEGREE_TO_RAIDAN
-                else:
-                    radian = 0.0
-                positions[dxl_id] = radian
-            else:
-                rospy.logwarn(f"Cannot read {dxl_id} data")
+            position_radian = (raw_data % self.DXL_RESOLUTION) * self.PULSE_TO_RADIAN
+
+            if self.offsets[dxl_id] is None:
+                self.offsets[dxl_id] = position_radian
+
+            data = position_radian - self.offsets[dxl_id]
+
+            if data > math.pi:
+                data -= 2 * math.pi
+            elif data < -math.pi:
+                data += 2 * math.pi
+
+            positions[dxl_id] = data
         return positions
 
     def read_position(self):
@@ -270,17 +240,15 @@ class DynamixelCurrentBasedPositionPublisher:
         positions_rad = self.read_position_radian()
         positions = self.read_position()
 
-        # currents = self.read_current()
+        if not self.initialized:
+            for dxl_id in self.dxl_ids:
+                if dxl_id in self.initial_positions:
+                    self.set_goal_position(dxl_id, self.initial_positions[dxl_id])
+            self.initialized = True
 
-        # if not self.initialized:
-        #     for dxl_id in self.dxl_ids:
-        #         if dxl_id in self.initial_positions:
-        #             self.set_goal_position(dxl_id, self.initial_positions[dxl_id])
-        #     self.initialized = True
-
-        # for dxl_id in self.dxl_ids:
-        #     if dxl_id in positions:
-        #         self.set_goal_position(dxl_id, positions[dxl_id])
+        for dxl_id in self.dxl_ids:
+            if dxl_id in positions:
+                self.set_goal_position(dxl_id, positions[dxl_id])
 
         if not self.initialized:
             self.initialize_positions()
@@ -291,10 +259,6 @@ class DynamixelCurrentBasedPositionPublisher:
         self.position_publisher.publish(
             Float32MultiArray(data=[positions_rad[dxl_id] for dxl_id in self.dxl_ids])
         )
-
-        # self.current_publisher.publish(Float32MultiArray(data=[currents[dxl_id] for dxl_id in self.dxl_ids]))
-
-        # rate.sleep()
 
     def __del__(self):
         self.port_handler.closePort()
